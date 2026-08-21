@@ -4,14 +4,13 @@ import {
   closePosition,
   createPosition,
   listPositions,
-  storageMode,
   updatePosition,
-} from "@/lib/store";
+} from "@/lib/positions";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { getBars } from "@/lib/market-data";
 import { lastEma } from "@/lib/indicators";
 import { enrichPosition } from "@/lib/scoring";
 import { detectAssetClass, normalizeSymbol } from "@/lib/symbols";
-import { RPT_PCT } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,8 +19,7 @@ const createSchema = z.object({
   symbol: z.string().min(1),
   entryPrice: z.number().positive(),
   stopLoss: z.number().positive(),
-  qty: z.number().positive().optional(),
-  accountEquity: z.number().positive().default(100000),
+  qty: z.number().positive(),
   notes: z.string().optional(),
 });
 
@@ -34,7 +32,22 @@ const patchSchema = z.object({
   action: z.enum(["update", "close"]).default("update"),
 });
 
+function requireSupabase() {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "Supabase 未設定：請在 Vercel 環境變數加入 NEXT_PUBLIC_SUPABASE_URL 與 NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      },
+      { status: 503 }
+    );
+  }
+  return null;
+}
+
 export async function GET() {
+  const missing = requireSupabase();
+  if (missing) return missing;
   try {
     const positions = await listPositions("open");
     const live = await Promise.all(
@@ -50,8 +63,7 @@ export async function GET() {
       })
     );
     return NextResponse.json({
-      storage: storageMode(),
-      rptPct: RPT_PCT * 100,
+      storage: "supabase",
       positions: live,
     });
   } catch (e) {
@@ -63,16 +75,17 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const missing = requireSupabase();
+  if (missing) return missing;
   try {
     const body = createSchema.parse(await req.json());
     const symbol = normalizeSymbol(body.symbol);
-    const riskPerShare = Math.abs(body.entryPrice - body.stopLoss);
-    if (riskPerShare <= 0) {
-      return NextResponse.json({ error: "止損必須異於進場價" }, { status: 400 });
+    if (body.stopLoss >= body.entryPrice) {
+      return NextResponse.json(
+        { error: "做多止損必須低於進場價" },
+        { status: 400 }
+      );
     }
-    // Lock RPT 0.3% of equity if qty omitted
-    const riskBudget = body.accountEquity * RPT_PCT;
-    const qty = body.qty ?? Math.max(1, Math.floor(riskBudget / riskPerShare));
 
     const pos = await createPosition({
       symbol,
@@ -80,8 +93,8 @@ export async function POST(req: Request) {
       side: "long",
       entryPrice: body.entryPrice,
       stopLoss: body.stopLoss,
-      qty,
-      accountEquity: body.accountEquity,
+      qty: body.qty,
+      accountEquity: 0,
       notes: body.notes,
     });
 
@@ -93,6 +106,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const missing = requireSupabase();
+  if (missing) return missing;
   try {
     const body = patchSchema.parse(await req.json());
     if (body.action === "close") {
@@ -112,7 +127,13 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function PUT(req: Request) {
+  return PATCH(req);
+}
+
 export async function DELETE(req: Request) {
+  const missing = requireSupabase();
+  if (missing) return missing;
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

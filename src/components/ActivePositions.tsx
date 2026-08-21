@@ -7,7 +7,7 @@ interface CreatePayload {
   symbol: string;
   entryPrice: number;
   stopLoss: number;
-  accountEquity: number;
+  qty: number;
   notes?: string;
 }
 
@@ -20,6 +20,13 @@ interface Props {
   onUpdateStop: (id: string, stopLoss: number) => Promise<void>;
   onClose: (id: string) => Promise<void>;
   onSelectSymbol: (symbol: string) => void;
+}
+
+function money(n: number): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function ActivePositions({
@@ -36,7 +43,7 @@ export function ActivePositions({
   const [symbol, setSymbol] = useState("");
   const [entry, setEntry] = useState("");
   const [stop, setStop] = useState("");
-  const [equity, setEquity] = useState("100000");
+  const [shares, setShares] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +65,9 @@ export function ActivePositions({
     try {
       const entryPrice = Number(entry);
       const stopLoss = Number(stop);
-      if (!symbol || !(entryPrice > 0) || !(stopLoss > 0)) {
-        setError("請填寫有效代碼、進場價與止損");
+      const qty = Number(shares);
+      if (!symbol || !(entryPrice > 0) || !(stopLoss > 0) || !(qty > 0)) {
+        setError("請填寫代碼、進場價、止損與持股數量");
         return;
       }
       if (stopLoss >= entryPrice) {
@@ -70,13 +78,14 @@ export function ActivePositions({
         symbol,
         entryPrice,
         stopLoss,
-        accountEquity: Number(equity) || 100000,
+        qty,
         notes: notes || undefined,
       });
       setModalOpen(false);
       setSymbol("");
       setEntry("");
       setStop("");
+      setShares("");
       setNotes("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "新增失敗");
@@ -91,7 +100,9 @@ export function ActivePositions({
         <div>
           <h2 className="section-title">雲端持倉 · 1R / 3R / 5R 階梯</h2>
           <p className="section-sub">
-            RPT 0.3% · {storage === "supabase" ? "Supabase 即時同步" : "本地雲端檔持久化"}
+            {storage === "supabase"
+              ? "Supabase 雲端直連 · 跨裝置即時同步"
+              : "等待設定 Supabase 環境變數"}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -140,7 +151,11 @@ export function ActivePositions({
                       {p.symbol}
                     </span>
                     <div className="text-[11px] text-terminal-muted font-mono mt-0.5">
-                      {p.qty} 股 · 進場 ${p.entryPrice} · 現價 ${p.lastPrice}
+                      {p.qty.toLocaleString()} 股 | 市值: ${money(p.marketValue)}
+                    </div>
+                    <div className="text-[10px] text-terminal-muted font-mono">
+                      進場 ${p.entryPrice} · 現價 ${p.lastPrice} · 止損 $
+                      {p.stopLoss}
                     </div>
                   </button>
                   <div className="text-right">
@@ -157,35 +172,32 @@ export function ActivePositions({
                       {p.rMultiple.toFixed(1)}R
                     </div>
                     <div className="text-[10px] text-terminal-muted mt-1">
-                      當前浮盈 R-Multiple
+                      當前浮盈 R 數
                     </div>
                   </div>
                 </div>
 
-                {/* 1R / 3R / 5R ladder */}
                 <div className="mt-3 grid grid-cols-1 gap-1.5 text-[11px] font-mono">
-                  <div className="rounded border border-terminal-border/80 bg-terminal-card/40 px-2 py-1.5 text-terminal-muted">
+                  <div className="rounded border border-terminal-border/80 bg-terminal-card/40 px-2 py-1.5">
                     <span className="text-terminal-red">1R 風險:</span>{" "}
                     <span className="text-terminal-text">
-                      -{p.oneRRiskPct.toFixed(2)}% (-${p.oneRPerShare.toFixed(2)}
-                      /股)
+                      -{p.oneRRiskPct.toFixed(2)}% (-${money(p.riskAmount)})
                     </span>
                   </div>
                   <div className="rounded border border-terminal-gold/30 bg-terminal-gold/5 px-2 py-1.5">
                     <span className="text-terminal-gold">+3R 目標:</span>{" "}
                     <span className="text-terminal-text">
-                      ${p.target3R.toFixed(2)} (+{p.target3RPct.toFixed(1)}%)
+                      ${money(p.target3R)} (+{p.target3RPct.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="rounded border border-terminal-cyan/30 bg-terminal-cyan/5 px-2 py-1.5">
                     <span className="text-terminal-cyan">+5R 目標:</span>{" "}
                     <span className="text-terminal-text">
-                      ${p.target5R.toFixed(2)} (+{p.target5RPct.toFixed(1)}%)
+                      ${money(p.target5R)} (+{p.target5RPct.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="text-terminal-muted px-1">
-                    風險金額 ${p.riskAmount.toFixed(0)} · RPT {p.riskPct}% · 距
-                    9EMA{" "}
+                    距 9EMA{" "}
                     <span
                       className={
                         Math.abs(p.ema9DeviationPct) > 15
@@ -267,7 +279,6 @@ export function ActivePositions({
         </div>
       )}
 
-      {/* Modal */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 p-4"
@@ -284,45 +295,60 @@ export function ActivePositions({
               ➕ 新增雲端持倉
             </h3>
             <p className="text-[10px] font-mono text-terminal-muted mb-3">
-              保存後即時樂觀更新並同步雲端
+              直寫 Supabase · 保存後瞬間同步面板
             </p>
             <div className="grid gap-2">
-              <input
-                className="input uppercase"
-                placeholder="代碼 (如 AAOI)"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                autoFocus
-              />
+              <label className="text-[10px] text-terminal-muted font-mono">
+                股票代碼 (Ticker)
+                <input
+                  className="input uppercase w-full mt-1"
+                  placeholder="如 NVDA / AAOI / MSTR"
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  autoFocus
+                />
+              </label>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  className="input"
-                  placeholder="進場價"
-                  value={entry}
-                  onChange={(e) => setEntry(e.target.value)}
-                  inputMode="decimal"
-                />
-                <input
-                  className="input"
-                  placeholder="止損價"
-                  value={stop}
-                  onChange={(e) => setStop(e.target.value)}
-                  inputMode="decimal"
-                />
+                <label className="text-[10px] text-terminal-muted font-mono">
+                  進場價格 (Entry)
+                  <input
+                    className="input w-full mt-1"
+                    placeholder="29.4"
+                    value={entry}
+                    onChange={(e) => setEntry(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="text-[10px] text-terminal-muted font-mono">
+                  硬止損價 (Stop)
+                  <input
+                    className="input w-full mt-1"
+                    placeholder="28.7"
+                    value={stop}
+                    onChange={(e) => setStop(e.target.value)}
+                    inputMode="decimal"
+                  />
+                </label>
               </div>
-              <input
-                className="input"
-                placeholder="帳戶淨值 (計算 RPT 股數)"
-                value={equity}
-                onChange={(e) => setEquity(e.target.value)}
-                inputMode="decimal"
-              />
-              <input
-                className="input"
-                placeholder="備註（可選）"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              <label className="text-[10px] text-terminal-muted font-mono">
+                持股數量 / 股數 (Shares)
+                <input
+                  className="input w-full mt-1"
+                  placeholder="如 500、1000"
+                  value={shares}
+                  onChange={(e) => setShares(e.target.value)}
+                  inputMode="numeric"
+                />
+              </label>
+              <label className="text-[10px] text-terminal-muted font-mono">
+                交易備註 (Notes) · 可選
+                <input
+                  className="input w-full mt-1"
+                  placeholder="Launchpad / EP…"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </label>
               {error && (
                 <p className="text-xs text-terminal-red font-mono">{error}</p>
               )}
@@ -338,7 +364,7 @@ export function ActivePositions({
                 <button
                   type="button"
                   className="btn-primary flex-1"
-                  disabled={busy || !symbol || !entry || !stop}
+                  disabled={busy || !symbol || !entry || !stop || !shares}
                   onClick={submit}
                 >
                   {busy ? "保存中…" : "保存 / 新增持倉"}

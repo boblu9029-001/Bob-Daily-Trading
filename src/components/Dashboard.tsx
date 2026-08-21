@@ -9,7 +9,6 @@ import { TvChart } from "./TvChart";
 import { BottomNav } from "./BottomNav";
 import { enrichPosition, enrichPositionOptimistic } from "@/lib/scoring";
 import { detectAssetClass, normalizeSymbol } from "@/lib/symbols";
-import { RPT_PCT } from "@/lib/types";
 import type {
   ChartMeta,
   Position,
@@ -137,13 +136,10 @@ export function Dashboard() {
     symbol: string;
     entryPrice: number;
     stopLoss: number;
-    accountEquity: number;
+    qty: number;
     notes?: string;
   }) {
     const sym = normalizeSymbol(payload.symbol);
-    const riskPerShare = Math.abs(payload.entryPrice - payload.stopLoss);
-    const riskBudget = payload.accountEquity * RPT_PCT;
-    const qty = Math.max(1, Math.floor(riskBudget / Math.max(riskPerShare, 1e-9)));
     const now = new Date().toISOString();
     const tempId = `temp-${crypto.randomUUID()}`;
 
@@ -154,8 +150,8 @@ export function Dashboard() {
       side: "long",
       entryPrice: payload.entryPrice,
       stopLoss: payload.stopLoss,
-      qty,
-      accountEquity: payload.accountEquity,
+      qty: payload.qty,
+      accountEquity: 0,
       notes: payload.notes,
       status: "open",
       createdAt: now,
@@ -179,10 +175,9 @@ export function Dashboard() {
           typeof err.error === "string" ? err.error : "新增持倉失敗"
         );
       }
-      // 2) 拉取最新資料（Supabase / 本地檔）覆蓋樂觀狀態
+      // 2) 拉取 Supabase 最新資料覆蓋樂觀狀態
       await loadPositions();
     } catch (e) {
-      // 回滾暫存卡並重新同步
       setPositions((prev) => prev.filter((p) => p.id !== tempId));
       await loadPositions();
       throw e;

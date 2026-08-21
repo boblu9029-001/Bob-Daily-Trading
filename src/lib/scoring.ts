@@ -19,7 +19,7 @@ import type {
   RegimeAsset,
   RegimeBoard,
 } from "./types";
-import { NO_CHASE_DEV_PCT, RPT_PCT, SCALE_OUT_R } from "./types";
+import { NO_CHASE_DEV_PCT, SCALE_OUT_R } from "./types";
 import { getSessionStatus } from "./market-hours";
 
 function assetScoreFromStack(
@@ -271,9 +271,9 @@ export function enrichPosition(
   return {
     ...pos,
     lastPrice: round(lastPrice, 4),
+    marketValue: round(lastPrice * pos.qty, 2),
     rMultiple: ladder.rMultiple,
     riskAmount: round(riskAmt, 2),
-    riskPct: round(RPT_PCT * 100, 2),
     oneRRiskPct: ladder.oneRRiskPct,
     oneRPerShare: ladder.oneRPerShare,
     target3R: ladder.target3R,

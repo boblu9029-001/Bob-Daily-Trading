@@ -71,9 +71,11 @@ export interface Position {
 
 export interface PositionLive extends Position {
   lastPrice: number;
+  /** 市值 = lastPrice * qty */
+  marketValue: number;
   rMultiple: number;
+  /** 1R 總風險金額：(Entry - Stop) * Shares */
   riskAmount: number;
-  riskPct: number; // RPT 0.3%
   /** 1R 止損幅度 %：(Entry - Stop) / Entry * 100 */
   oneRRiskPct: number;
   /** 每股 1R 美元風險：Entry - Stop */

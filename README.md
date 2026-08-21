@@ -22,21 +22,22 @@ npm run dev
 
 未設定 API Key 時，行情自動走 **Yahoo Finance**（美股）與 **Binance 公開 K 線**（BTC/ETH）。
 
-## 環境變數
+## 環境變數（持倉必須）
 
 | 變數 | 說明 |
 |------|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | **必填**，雲端 Postgres |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **必填**，持倉 CRUD（Vercel 不可寫本地檔） |
 | `ALPACA_API_KEY` / `ALPACA_API_SECRET` | 可選，美股優先數據源 |
-| `NEXT_PUBLIC_SUPABASE_URL` | 可選，雲端 Postgres |
-| `SUPABASE_SERVICE_ROLE_KEY` | 可選，持倉 CRUD |
 
-未設定 Supabase 時，持倉寫入專案內 `data/positions.json`（重啟不遺失）。
+> Vercel 為唯讀檔案系統，持倉已 **100% 直連 Supabase** `positions` 表，不再使用 `data/positions.json`。
 
 ### 啟用 Supabase
 
 1. 建立專案後執行 `supabase/schema.sql`
-2. 填入 `.env.local` 中的 URL 與 Service Role Key
-3. 重啟 `npm run dev`
+2. 在 `.env.local` 與 Vercel Environment Variables 填入 URL + Anon Key
+3. 確認 RLS policy 允許 anon 讀寫（schema 內已含開放政策；個人儀表板適用）
+4. 重新部署 / `npm run dev`
 
 ## 部署（全天候手機訪問）
 

@@ -34,6 +34,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local store
-/data/*.json
-!/data/.gitkeep
+data/
