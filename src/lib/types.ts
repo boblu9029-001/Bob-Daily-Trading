@@ -73,7 +73,19 @@ export interface PositionLive extends Position {
   lastPrice: number;
   rMultiple: number;
   riskAmount: number;
-  riskPct: number;
+  riskPct: number; // RPT 0.3%
+  /** 1R 止損幅度 %：(Entry - Stop) / Entry * 100 */
+  oneRRiskPct: number;
+  /** 每股 1R 美元風險：Entry - Stop */
+  oneRPerShare: number;
+  /** +3R 目標價 */
+  target3R: number;
+  /** +3R 相對進場漲幅 % */
+  target3RPct: number;
+  /** +5R 目標價 */
+  target5R: number;
+  /** +5R 相對進場漲幅 % */
+  target5RPct: number;
   ema9: number;
   ema9DeviationPct: number;
   alerts: PositionAlert[];
@@ -88,7 +100,31 @@ export type PatternTag =
   | "launchpad"
   | "breakout_52w"
   | "ur_reversal"
+  | "no_chase"
+  | "episodic_pivot"
+  | "avwap_bounce";
+
+export type SignalPattern =
+  | "launchpad"
+  | "ur_reversal"
+  | "episodic_pivot"
+  | "avwap_bounce"
   | "no_chase";
+
+export interface TradeSignal {
+  id: string;
+  symbol: string;
+  name: string;
+  pattern: SignalPattern;
+  label: string;
+  entry: number;
+  stop: number;
+  oneRRiskPct: number;
+  adr20Pct: number;
+  price: number;
+  triggeredAt: string;
+  priority: number; // higher = show first
+}
 
 export interface MomentumTarget {
   symbol: string;

@@ -220,21 +220,39 @@ export function scoreMomentumTarget(
   };
 }
 
+/** Martin Luk R-ladder：1R / +3R / +5R */
+export function calcRLadder(entry: number, stop: number, lastPrice: number) {
+  const oneR = Math.abs(entry - stop);
+  const oneRRiskPct = entry > 0 ? (oneR / entry) * 100 : 0;
+  const target3R = entry + 3 * oneR;
+  const target5R = entry + 5 * oneR;
+  const rMult = oneR < 1e-9 ? 0 : (lastPrice - entry) / oneR;
+  return {
+    oneR,
+    oneRRiskPct: round(oneRRiskPct, 2),
+    oneRPerShare: round(oneR, 4),
+    target3R: round(target3R, 4),
+    target3RPct: round(entry > 0 ? ((target3R - entry) / entry) * 100 : 0, 2),
+    target5R: round(target5R, 4),
+    target5RPct: round(entry > 0 ? ((target5R - entry) / entry) * 100 : 0, 2),
+    rMultiple: round(rMult, 2),
+  };
+}
+
 export function enrichPosition(
   pos: Position,
   lastPrice: number,
   ema9: number
 ): PositionLive {
-  const riskAmt = Math.abs(pos.entryPrice - pos.stopLoss) * pos.qty;
-  const risk = Math.abs(pos.entryPrice - pos.stopLoss);
-  const rMult = risk < 1e-9 ? 0 : (lastPrice - pos.entryPrice) / risk;
+  const ladder = calcRLadder(pos.entryPrice, pos.stopLoss, lastPrice);
+  const riskAmt = ladder.oneR * pos.qty;
   const deviation = ema9DeviationPct(lastPrice, ema9);
   const alerts: PositionAlert[] = [];
 
-  if (rMult >= SCALE_OUT_R) {
+  if (ladder.rMultiple >= SCALE_OUT_R) {
     alerts.push({
       type: "scale_50",
-      label: `金色減倉 50% 警報 (+${round(rMult, 1)}R)`,
+      label: `⚠️ 達成 +3R 減倉 50% 鎖利 (+${ladder.rMultiple.toFixed(1)}R)`,
     });
   }
   if (lastPrice < ema9) {
@@ -253,11 +271,22 @@ export function enrichPosition(
   return {
     ...pos,
     lastPrice: round(lastPrice, 4),
-    rMultiple: round(rMult, 2),
+    rMultiple: ladder.rMultiple,
     riskAmount: round(riskAmt, 2),
     riskPct: round(RPT_PCT * 100, 2),
+    oneRRiskPct: ladder.oneRRiskPct,
+    oneRPerShare: ladder.oneRPerShare,
+    target3R: ladder.target3R,
+    target3RPct: ladder.target3RPct,
+    target5R: ladder.target5R,
+    target5RPct: ladder.target5RPct,
     ema9: round(ema9, 4),
     ema9DeviationPct: round(deviation, 2),
     alerts,
   };
+}
+
+/** 樂觀更新用：尚未取得即時報價時以進場價佔位 */
+export function enrichPositionOptimistic(pos: Position): PositionLive {
+  return enrichPosition(pos, pos.entryPrice, pos.entryPrice);
 }
