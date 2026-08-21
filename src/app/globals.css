@@ -1,0 +1,77 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0c10;
+  --card: #131722;
+  --cyan: #00f2fe;
+  --green: #10b981;
+  --red: #ef4444;
+  --gold: #f59e0b;
+  --muted: #8b949e;
+  --text: #e6edf3;
+  --border: #1e2330;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 242, 254, 0.07), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(16, 185, 129, 0.05), transparent 50%),
+    var(--bg);
+  min-height: 100vh;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-terminal-border bg-terminal-card p-4 shadow-glow;
+  }
+  .section-title {
+    @apply text-sm sm:text-base font-semibold text-terminal-text tracking-wide;
+  }
+  .section-sub {
+    @apply text-[10px] sm:text-xs text-terminal-muted font-mono mt-0.5;
+  }
+  .input {
+    @apply rounded-md border border-terminal-border bg-terminal-bg px-3 py-2 text-sm text-terminal-text outline-none focus:border-terminal-cyan/60 font-mono;
+  }
+  .btn-primary {
+    @apply rounded-md bg-terminal-cyan/15 border border-terminal-cyan/40 text-terminal-cyan px-3 py-2 text-xs font-semibold hover:bg-terminal-cyan/25 disabled:opacity-40 transition-colors;
+  }
+  .btn-ghost {
+    @apply rounded-md border border-terminal-border text-terminal-muted px-3 py-2 text-xs hover:text-terminal-text hover:border-terminal-muted transition-colors;
+  }
+  .btn-danger {
+    @apply rounded-md border border-terminal-red/40 text-terminal-red px-3 py-2 text-xs hover:bg-terminal-red/10 transition-colors;
+  }
+  .badge-cyan {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-mono bg-terminal-cyan/15 text-terminal-cyan border border-terminal-cyan/30;
+  }
+  .badge-gold {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-mono bg-terminal-gold/15 text-terminal-gold border border-terminal-gold/40;
+  }
+  .badge-red {
+    @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-mono bg-terminal-red/15 text-terminal-red border border-terminal-red/40;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e2330;
+  border-radius: 4px;
+}

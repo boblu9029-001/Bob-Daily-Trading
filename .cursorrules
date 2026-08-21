@@ -1,0 +1,18 @@
+# Bob - Daily Trading (Martin Luk Master System 4.0 Pro)
+
+## 核心交易規則（必須遵守）
+- 單筆風險 RPT 鎖定 **0.3%** 帳戶淨值
+- 極窄止損區間建議 **1.2%–2.5%**（相對進場價）
+- 均線體系：日線 / 5m **9 / 21 / 50 EMA** + **Anchored VWAP**
+- **+3R** → 金色減倉 50% 警報
+- 跌破日線 **9 EMA** → 波段清倉警報
+- 偏離 9 EMA **>15%** → 紅色禁追（禁止追高）
+- 動量評分權重：30% RS + 25% ADR20 + 20% 52W + 15% EMA 多頭 + 10% 偏離保護
+
+## 技術約束
+- Next.js 14 App Router + TypeScript + Tailwind
+- 圖表：lightweight-charts
+- 持倉必須可雲端持久化（Supabase 或本地 JSON fallback）
+- UI 色票：bg `#0a0c10` / card `#131722` / cyan `#00f2fe` / green `#10b981` / red `#ef4444`
+- 零冗餘、高內聚；不要加入與交易系統無關的模組
+- 回覆與 UI 文案優先繁體中文
